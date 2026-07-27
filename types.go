@@ -11,6 +11,7 @@ const (
 	Gitea     ForgeType = "gitea"
 	Forgejo   ForgeType = "forgejo"
 	Bitbucket ForgeType = "bitbucket"
+	Gerrit    ForgeType = "gerrit"
 	Tangled   ForgeType = "tangled"
 	Unknown   ForgeType = "unknown"
 )

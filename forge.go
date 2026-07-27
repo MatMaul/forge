@@ -147,6 +147,11 @@ func (c *Client) RegisterDomain(ctx context.Context, domain, token string, build
 		c.forges[domain] = builders.GitLab(baseURL, token, c.httpClient)
 	case Gitea, Forgejo:
 		c.forges[domain] = builders.Gitea(baseURL, token, c.httpClient)
+	case Gerrit:
+		if builders.Gerrit == nil {
+			return fmt.Errorf("no builder registered for forge type %q at %s", ft, domain)
+		}
+		c.forges[domain] = builders.Gerrit(baseURL, token, c.httpClient)
 	case Tangled:
 		if builders.Tangled == nil {
 			return fmt.Errorf("no builder registered for forge type %q at %s", ft, domain)
@@ -164,6 +169,7 @@ type ForgeBuilders struct {
 	GitHub  func(baseURL, token string, hc *http.Client) Forge
 	GitLab  func(baseURL, token string, hc *http.Client) Forge
 	Gitea   func(baseURL, token string, hc *http.Client) Forge
+	Gerrit  func(baseURL, token string, hc *http.Client) Forge
 	Tangled func(baseURL, token string, hc *http.Client) Forge
 }
 

@@ -324,6 +324,30 @@ func TestDetectForgeTypeGitHubAPI(t *testing.T) {
 	}
 }
 
+func TestDetectForgeTypeGerritAPI(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/version", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("GET /api/v4/version", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("GET /config/server/version", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, ")]}'\n\"3.9.0\"")
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	ft, err := detectFromAPI(context.Background(), http.DefaultClient, srv.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ft != Gerrit {
+		t.Errorf("want Gerrit, got %s", ft)
+	}
+}
+
 func TestDetectForgeTypeTangledAPI(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
@@ -351,6 +375,47 @@ func TestDetectForgeTypeTangledAPI(t *testing.T) {
 	}
 	if ft != Tangled {
 		t.Errorf("want Tangled, got %s", ft)
+	}
+}
+
+func TestRegisterDomainGerritMissingBuilderReturnsError(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/version", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("GET /api/v4/version", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	mux.HandleFunc("GET /config/server/version", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, ")]}'\n\"3.9.0\"")
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	base, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := NewClient(WithHTTPClient(&http.Client{
+		Transport: rewriteHostTransport{base: base},
+	}))
+
+	err = client.RegisterDomain(context.Background(), "gerrit.example", "", ForgeBuilders{
+		GitHub: func(baseURL, token string, hc *http.Client) Forge {
+			return &mockForge{}
+		},
+		GitLab: func(baseURL, token string, hc *http.Client) Forge {
+			return &mockForge{}
+		},
+		Gitea: func(baseURL, token string, hc *http.Client) Forge {
+			return &mockForge{}
+		},
+	})
+	if err == nil {
+		t.Fatal("expected missing Gerrit builder error")
+	}
+	if !strings.Contains(err.Error(), "no builder registered") || !strings.Contains(err.Error(), "gerrit") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

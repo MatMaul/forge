@@ -1,6 +1,6 @@
 # forge
 
-Go library and CLI for working with git forges. Supports GitHub, GitLab, Gitea/Forgejo, Bitbucket Cloud, and Tangled through a single interface.
+Go library and CLI for working with git forges. Supports GitHub, GitLab, Gitea/Forgejo, Bitbucket Cloud, Gerrit, and Tangled through a single interface.
 
 ## CLI
 
@@ -42,6 +42,7 @@ Store tokens with `forge auth login`:
 forge auth login                          # interactive: asks domain + token
 forge auth login --domain github.com --token ghp_abc123
 forge auth login --domain gitea.example.com --token abc123 --type gitea
+forge auth login --domain gerrit.example.com --token user:http_password --type gerrit
 forge auth login --domain github.com --token-cmd 'rbw get github-token'
 ```
 
@@ -76,6 +77,10 @@ token = ghp_abc123
 [gitea.example.com]
 type = gitea
 token = abc123
+
+[gerrit.example.com]
+type = gerrit
+token = user:http_password
 ```
 
 ### Token commands
