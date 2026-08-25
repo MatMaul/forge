@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/git-pkgs/purl"
@@ -326,23 +327,20 @@ func (c *Client) FetchTagsFromPURL(ctx context.Context, p *purl.PURL) ([]Tag, er
 }
 
 // ParseRepoURL extracts the domain, owner, and repo from a repository URL.
-// It handles https://, schemeless, and git@host:owner/repo SSH URLs, and
-// strips .git suffixes and extra path segments.
+// It handles https://, schemeless, and scp-like SSH URLs (sshuser@host:owner/repo
+// or host:owner/repo), and strips .git suffixes and extra path segments.
 func ParseRepoURL(rawURL string) (domain, owner, repo string, err error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
 		return "", "", "", fmt.Errorf("empty URL")
 	}
 
-	// Handle git@ SSH URLs: git@github.com:owner/repo.git
-	if after, found := strings.CutPrefix(rawURL, "git@"); found {
-		rawURL = after
-		colonIdx := strings.Index(rawURL, ":")
-		if colonIdx < 0 {
-			return "", "", "", fmt.Errorf("invalid SSH URL: missing colon")
-		}
-		domain = rawURL[:colonIdx]
-		path := rawURL[colonIdx+1:]
+	// Handle scp-like syntax: user@host:owner/repo (e.g. git@github.com:user/repo).
+	scpCandidate := rawURL
+	if i := strings.Index(scpCandidate, "://"); i >= 0 {
+		scpCandidate = scpCandidate[i+len("://"):]
+	}
+	if domain, path, ok := splitSCPLike(scpCandidate); ok {
 		return splitOwnerRepo(domain, path)
 	}
 
@@ -360,6 +358,43 @@ func ParseRepoURL(rawURL string) (domain, owner, repo string, err error) {
 		domain = u.Host
 	}
 	return splitOwnerRepo(domain, u.Path)
+}
+
+// splitSCPLike recognizes git's scp-like remote syntax host:path, optionally
+// with userinfo (sshuser@host:path). It returns the host with any userinfo
+// stripped, and the path. ok is false when rawURL isn't scp-like, for example
+// when the colon is a numeric port (host:2222/path).
+func splitSCPLike(rawURL string) (domain, path string, ok bool) {
+	colonIdx := strings.Index(rawURL, ":")
+	if colonIdx < 0 {
+		return "", "", false
+	}
+	slashIdx := strings.Index(rawURL, "/")
+	if slashIdx >= 0 && slashIdx < colonIdx {
+		return "", "", false
+	}
+
+	// A colon immediately followed by digits is a port, not a separator.
+	portEnd := len(rawURL)
+	if slashIdx >= 0 {
+		portEnd = slashIdx
+	}
+	if port := rawURL[colonIdx+1 : portEnd]; port != "" {
+		if _, err := strconv.Atoi(port); err == nil {
+			return "", "", false
+		}
+	}
+
+	path = rawURL[colonIdx+1:]
+	if path == "" {
+		return "", "", false
+	}
+
+	host := rawURL[:colonIdx]
+	if at := strings.LastIndex(host, "@"); at >= 0 {
+		host = host[at+1:]
+	}
+	return host, path, true
 }
 
 const minOwnerRepoParts = 2
