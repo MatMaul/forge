@@ -336,16 +336,10 @@ func ParseRepoURL(rawURL string) (domain, owner, repo string, err error) {
 	}
 
 	// Handle scp-like syntax: user@host:owner/repo (e.g. git@github.com:user/repo).
-	scpCandidate := rawURL
-	if i := strings.Index(scpCandidate, "://"); i >= 0 {
-		scpCandidate = scpCandidate[i+len("://"):]
-	}
-	if domain, path, ok := splitSCPLike(scpCandidate); ok {
-		return splitOwnerRepo(domain, path)
-	}
-
-	// Add scheme if missing
 	if !strings.Contains(rawURL, "://") {
+		if domain, path, ok := splitSCPLike(rawURL); ok {
+			return splitOwnerRepo(domain, path)
+		}
 		rawURL = "https://" + rawURL
 	}
 
@@ -374,12 +368,15 @@ func splitSCPLike(rawURL string) (domain, path string, ok bool) {
 		return "", "", false
 	}
 
-	// A colon immediately followed by digits is a port, not a separator.
+	host := rawURL[:colonIdx]
+	at := strings.LastIndex(host, "@")
+
+	// Without explicit userinfo, a colon immediately followed by digits is a port.
 	portEnd := len(rawURL)
 	if slashIdx >= 0 {
 		portEnd = slashIdx
 	}
-	if port := rawURL[colonIdx+1 : portEnd]; port != "" {
+	if port := rawURL[colonIdx+1 : portEnd]; at < 0 && port != "" {
 		if _, err := strconv.Atoi(port); err == nil {
 			return "", "", false
 		}
@@ -390,8 +387,7 @@ func splitSCPLike(rawURL string) (domain, path string, ok bool) {
 		return "", "", false
 	}
 
-	host := rawURL[:colonIdx]
-	if at := strings.LastIndex(host, "@"); at >= 0 {
+	if at >= 0 {
 		host = host[at+1:]
 	}
 	return host, path, true
