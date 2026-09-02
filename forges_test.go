@@ -93,6 +93,14 @@ func TestParseRepoURL(t *testing.T) {
 			domain: "2001:db8::1", owner: "owner", repo: "repo",
 		},
 		{
+			input:  "git@[2001:db8::1]:owner/repo.git",
+			domain: "2001:db8::1", owner: "owner", repo: "repo",
+		},
+		{
+			input:  "[2001:db8::1]:owner/repo.git",
+			domain: "2001:db8::1", owner: "owner", repo: "repo",
+		},
+		{
 			input:  "git@gitlab.com:group/project.git",
 			domain: "gitlab.com", owner: "group", repo: "project",
 		},

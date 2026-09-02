@@ -359,24 +359,39 @@ func ParseRepoURL(rawURL string) (domain, owner, repo string, err error) {
 // stripped, and the path. ok is false when rawURL isn't scp-like, for example
 // when the colon is a numeric port (host:2222/path).
 func splitSCPLike(rawURL string) (domain, path string, ok bool) {
-	colonIdx := strings.Index(rawURL, ":")
+	colonIdx := -1
+	inBrackets := false
+findSeparator:
+	for i := 0; i < len(rawURL); i++ {
+		switch rawURL[i] {
+		case '[':
+			inBrackets = true
+		case ']':
+			inBrackets = false
+		case '/':
+			if !inBrackets {
+				return "", "", false
+			}
+		case ':':
+			if !inBrackets {
+				colonIdx = i
+				break findSeparator
+			}
+		}
+	}
 	if colonIdx < 0 {
 		return "", "", false
 	}
-	slashIdx := strings.Index(rawURL, "/")
-	if slashIdx >= 0 && slashIdx < colonIdx {
-		return "", "", false
+	slashIdx := len(rawURL)
+	if slashOffset := strings.Index(rawURL[colonIdx+1:], "/"); slashOffset >= 0 {
+		slashIdx = colonIdx + 1 + slashOffset
 	}
 
 	host := rawURL[:colonIdx]
 	at := strings.LastIndex(host, "@")
 
 	// Without explicit userinfo, a colon immediately followed by digits is a port.
-	portEnd := len(rawURL)
-	if slashIdx >= 0 {
-		portEnd = slashIdx
-	}
-	if port := rawURL[colonIdx+1 : portEnd]; at < 0 && port != "" {
+	if port := rawURL[colonIdx+1 : slashIdx]; at < 0 && port != "" {
 		if _, err := strconv.Atoi(port); err == nil {
 			return "", "", false
 		}
@@ -389,6 +404,9 @@ func splitSCPLike(rawURL string) (domain, path string, ok bool) {
 
 	if at >= 0 {
 		host = host[at+1:]
+	}
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = host[1 : len(host)-1]
 	}
 	if host == "" {
 		return "", "", false

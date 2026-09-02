@@ -629,6 +629,7 @@ func TestRepoResolvesGitRemoteURLs(t *testing.T) {
 		{name: "numeric owner", remoteURL: "git@github.com:123/repo.git", domain: "github.com", owner: "123"},
 		{name: "HTTPS userinfo", remoteURL: "https://user:token@github.com/owner/repo.git", domain: "github.com", owner: "owner"},
 		{name: "bracketed IPv6", remoteURL: "ssh://git@[2001:db8::1]:2222/owner/repo.git", domain: "2001:db8::1", owner: "owner"},
+		{name: "bracketed IPv6 SCP", remoteURL: "git@[2001:db8::1]:owner/repo.git", domain: "2001:db8::1", owner: "owner"},
 		{name: "empty host", remoteURL: ":owner/repo", wantErr: true},
 	}
 
