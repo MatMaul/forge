@@ -120,6 +120,10 @@ func TestParseRepoURL(t *testing.T) {
 			input:   "git@github.com",
 			wantErr: true,
 		},
+		{
+			input:   ":owner/repo",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

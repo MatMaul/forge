@@ -623,11 +623,13 @@ func TestRepoResolvesGitRemoteURLs(t *testing.T) {
 		remoteURL string
 		domain    string
 		owner     string
+		wantErr   bool
 	}{
 		{name: "arbitrary SSH user", remoteURL: "org-12345@github.com:owner/repo.git", domain: "github.com", owner: "owner"},
 		{name: "numeric owner", remoteURL: "git@github.com:123/repo.git", domain: "github.com", owner: "123"},
 		{name: "HTTPS userinfo", remoteURL: "https://user:token@github.com/owner/repo.git", domain: "github.com", owner: "owner"},
 		{name: "bracketed IPv6", remoteURL: "ssh://git@[2001:db8::1]:2222/owner/repo.git", domain: "2001:db8::1", owner: "owner"},
+		{name: "empty host", remoteURL: ":owner/repo", wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -635,6 +637,12 @@ func TestRepoResolvesGitRemoteURLs(t *testing.T) {
 			mustGit(t, "remote", "set-url", "origin", tt.remoteURL)
 
 			_, owner, repo, domain, err := Repo("", "")
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("Repo: %v", err)
 			}

@@ -390,6 +390,9 @@ func splitSCPLike(rawURL string) (domain, path string, ok bool) {
 	if at >= 0 {
 		host = host[at+1:]
 	}
+	if host == "" {
+		return "", "", false
+	}
 	return host, path, true
 }
 
